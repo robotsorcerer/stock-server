@@ -69,19 +69,6 @@ stocks_serve/
 
 Python 3.8 or later. The monitor uses **only the standard library** — no pip packages needed.
 
-| Stdlib module          | Used for                             |
-|------------------------|--------------------------------------|
-| `argparse`             | CLI flags                            |
-| `concurrent.futures`   | Parallel ticker fetching             |
-| `datetime`             | Timestamps, pre-market hour check    |
-| `json`                 | API response parsing                 |
-| `os`                   | Env vars, path resolution            |
-| `re`                   | ANSI stripping for notifications     |
-| `subprocess`           | Launching WhatsApp service           |
-| `sys`                  | Exit codes, stdout TTY detection     |
-| `time`                 | Sleep between polls, alert interval  |
-| `urllib.request`       | All HTTP calls (Nasdaq, Yahoo, ntfy) |
-
 ### Node.js (for WhatsApp alerts only)
 
 | Tool      | Version  | Notes                                      |
@@ -105,7 +92,7 @@ Python 3.8 or later. The monitor uses **only the standard library** — no pip p
 ### 1. Clone the repo
 
 ```bash
-git clone <repo-url> stocks_serve
+git clone https://github.com/robotsorcerer/stock-server.git stocks_serve
 cd stocks_serve
 ```
 
