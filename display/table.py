@@ -3,7 +3,7 @@ from utils.parsers import parse_dollar
 from api.nasdaq import get_price
 
 col_headers = ["SYMBOL", "$$", "BID", "ASK", "PREV_CLOSE", "CHANGE %",
-               "DAY_HIGH", "VOLUME", "1-Yr Low", "NSDQ Pred", "ALERT"]
+               "DAY_⬆️", "VOLUME", "1-Yr ⬇️", "NSDQ Pred", "ALERT"]
 widths = [len(h) for h in col_headers]
 
 
@@ -32,11 +32,11 @@ def build_row(stock, target_low, target_high):
     return [
         stock,                                                           # 0  SYMBOL
         round(display_price, 4),                                         # 1  $$
-        round(bid, 4) if bid is not None else "N/A",                     # 2  BID
-        round(ask, 4) if ask is not None else "N/A",                     # 3  ASK
-        round(prev_close, 4) if prev_close is not None else "N/A",       # 4  PREV_CLOSE
+        round(bid, 2) if bid is not None else "N/A",                     # 2  BID
+        round(ask, 2) if ask is not None else "N/A",                     # 3  ASK
+        round(prev_close, 2) if prev_close is not None else "N/A",       # 4  PREV_CLOSE
         change_pct if change_pct is not None else "N/A",                 # 5  CHANGE %
-        round(day_high, 4) if day_high is not None else "N/A",           # 6  DAY_HIGH
+        round(day_high, 2) if day_high is not None else "N/A",           # 6  DAY_HIGH
         display_volume,                                                  # 7  VOLUME
         target_low if target_low is not None else "N/A",                 # 8  TARGET_LOW
         target_high if target_high is not None else "N/A",               # 9  TARGET_HIGH
@@ -72,9 +72,9 @@ def print_table(rows):
             print(colorize(line, fg="fg_white", bg="bg_red", bold=True))
         elif ext_active:
             print(colorize(line, fg="fg_magenta", bg="bg_dark", bold=True))
-        elif change and change > 0:
+        elif isinstance(change, (int, float)) and change > 0:
             print(colorize(line, fg="fg_green", bg="bg_dark", bold=True))
-        elif change and change < 0:
+        elif isinstance(change, (int, float)) and change < 0:
             print(colorize(line, fg="fg_red", bg="bg_dark", bold=True))
         else:
             print(line)

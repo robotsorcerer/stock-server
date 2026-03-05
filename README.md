@@ -335,12 +335,13 @@ Defined in `config.py`. Edit `TICKERS` to change the permanent list.
 
 ### Row colors
 
-| Color              | Meaning                             |
-|--------------------|-------------------------------------|
-| Green on dark      | Price up from previous close        |
-| Red on dark        | Price down from previous close      |
-| Magenta on dark    | Extended hours active (pre/after)   |
-| White on red       | Price has hit or exceeded target    |
+| Color              | Meaning                                              |
+|--------------------|------------------------------------------------------|
+| Green on dark      | Price up from previous close                         |
+| Red on dark        | Price down from previous close                       |
+| Magenta on dark    | Extended hours active (pre/after)                    |
+| White on red       | Price has hit or exceeded target                     |
+| No color           | Change % unavailable (`N/A`) — no previous close data|
 
 ---
 
