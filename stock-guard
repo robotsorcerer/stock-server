@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""
+stock-guard — launch the stock monitor only on trading days.
+
+US stock market holidays (NYSE schedule):
+  New Year's Day      Jan 1  (observed Fri if Sat, Mon if Sun)
+  MLK Day             3rd Monday of January
+  Presidents Day      3rd Monday of February
+  Good Friday         Friday before Easter
+  Memorial Day        Last Monday of May
+  Juneteenth          Jun 19 (observed Fri if Sat, Mon if Sun)
+  Independence Day    Jul 4  (observed Fri if Sat, Mon if Sun)
+  Labor Day           1st Monday of September
+  Thanksgiving        4th Thursday of November
+  Christmas Day       Dec 25 (observed Fri if Sat, Mon if Sun)
+"""
+import datetime
+import os
+import subprocess
+import sys
+
+
+def easter(year):
+    """Anonymous Gregorian algorithm for Easter Sunday."""
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month, day = divmod(h + l - 7 * m + 114, 31)
+    return datetime.date(year, month, day + 1)
+
+
+def nth_weekday(year, month, weekday, n):
+    """Return the nth occurrence of weekday (0=Mon) in the given month."""
+    first = datetime.date(year, month, 1)
+    delta = (weekday - first.weekday()) % 7
+    return first + datetime.timedelta(days=delta + 7 * (n - 1))
+
+
+def last_weekday(year, month, weekday):
+    """Return the last occurrence of weekday in the given month."""
+    if month == 12:
+        last = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+    else:
+        last = datetime.date(year, month + 1, 1) - datetime.timedelta(days=1)
+    delta = (last.weekday() - weekday) % 7
+    return last - datetime.timedelta(days=delta)
+
+
+def observed(date):
+    """Return the observed holiday date for Sat→Fri, Sun→Mon."""
+    if date.weekday() == 5:   # Saturday → Friday
+        return date - datetime.timedelta(days=1)
+    if date.weekday() == 6:   # Sunday → Monday
+        return date + datetime.timedelta(days=1)
+    return date
+
+
+def market_holidays(year):
+    holidays = set()
+
+    def add(d):
+        holidays.add(observed(d))
+
+    add(datetime.date(year, 1, 1))                        # New Year's Day
+    holidays.add(nth_weekday(year, 1, 0, 3))              # MLK Day
+    holidays.add(nth_weekday(year, 2, 0, 3))              # Presidents Day
+    holidays.add(easter(year) - datetime.timedelta(days=2))  # Good Friday
+    holidays.add(last_weekday(year, 5, 0))                # Memorial Day
+    add(datetime.date(year, 6, 19))                       # Juneteenth
+    add(datetime.date(year, 7, 4))                        # Independence Day
+    holidays.add(nth_weekday(year, 9, 0, 1))              # Labor Day
+    holidays.add(nth_weekday(year, 11, 3, 4))             # Thanksgiving
+    add(datetime.date(year, 12, 25))                      # Christmas Day
+
+    return holidays
+
+
+def is_trading_day(date=None):
+    if date is None:
+        date = datetime.date.today()
+    if date.weekday() >= 5:   # Saturday=5, Sunday=6
+        return False, "weekend"
+    if date in market_holidays(date.year):
+        return False, "market holiday"
+    return True, "trading day"
+
+
+if __name__ == "__main__":
+    trading, reason = is_trading_day()
+    if not trading:
+        print(f"[stock-guard] Not launching — today is a {reason}.")
+        sys.exit(0)
+
+    base = os.path.dirname(os.path.abspath(__file__))
+
+    # Start the WhatsApp notification service in the background (if present).
+    wa_service = os.path.join(base, "stocks_serve", "whatsapp_service.mjs")
+    if os.path.exists(wa_service):
+        import subprocess
+        subprocess.Popen(
+            ["node", wa_service],
+            stdout=open(os.path.join(base, "stocks_serve", "wa_service.log"), "a"),
+            stderr=subprocess.STDOUT,
+        )
+        print("[stock-guard] WhatsApp service started.")
+
+    script = os.path.join(base, "stock")
+    # Pass through any extra arguments (e.g. --crypto ETH --whatsapp +16467651373)
+    cmd = [script] + sys.argv[1:]
+    print(f"[stock-guard] Trading day — launching stock monitor.")
+    os.execv(script, cmd)

@@ -1,0 +1,13 @@
+# Python standard-library only — no third-party packages required.
+# Python >= 3.8 is sufficient; tested on 3.13.
+#
+# All modules used are part of the Python stdlib:
+#   argparse, concurrent.futures, datetime, json, os, re,
+#   subprocess, sys, time, urllib.request
+#
+# Runtime dependencies that must be installed separately:
+#   - Node.js >= 18  (for whatsapp_service.mjs)
+#   - npm            (ships with Node.js)
+#   - @whiskeysockets/baileys  (installed via `npm install` inside stocks_serve/)
+#   - openclaw >= 2026.3  (optional — only needed for initial WhatsApp QR-code pairing)
+#   - ntfy mobile app     (optional — only needed for ntfy push alerts)

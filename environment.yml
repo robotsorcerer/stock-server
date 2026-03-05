@@ -1,0 +1,7 @@
+name: stocks
+channels:
+  - defaults
+dependencies:
+  - python>=3.8
+  # All other runtime dependencies are Node.js-based (see README — npm install).
+  # No conda or pip packages are required beyond the Python stdlib.

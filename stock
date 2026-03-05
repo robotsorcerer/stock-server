@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""
+Stock Price Monitor
+Real-time Nasdaq prices with pre/after-hours support and phone alerts.
+"""
+import argparse
+import datetime
+import json
+import sys
+import time
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Ensure imports resolve relative to this script's directory.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from config import TICKERS, CRYPTO_TICKERS
+from utils.colors import colorize
+from api.nasdaq import fetch_targets
+from display.table import build_row, print_table
+from alerts.notify import send_ntfy, send_whatsapp
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Stock Price Monitor — real-time Nasdaq prices with pre/after-hours support.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  stock                           # use built-in ticker list\n"
+            "  stock AAPL TSLA                 # append stocks to built-in list\n"
+            "  stock --tickers AAPL TSLA       # same as above (flag form)\n"
+            "  stock -t AAPL TSLA              # short form\n"
+            "  stock --crypto ETH SOL          # append crypto tickers\n"
+            "  stock -c ETH SOL                # short form\n"
+            "  stock --only AAPL TSLA          # replace built-in list entirely\n"
+            "  stock --only --crypto ETH SOL   # only crypto, no default stocks\n"
+            "  stock --no-default AAPL TSLA    # alias for --only\n"
+            "  stock -t AAPL -c ETH --only     # mix stocks and crypto, no defaults\n"
+            "  stock --sleep 60                # refresh every 60 seconds\n"
+            "  stock -s 10                     # refresh every 10 seconds\n"
+        ),
+    )
+    parser.add_argument("tickers", nargs="*", metavar="TICKER",
+                        help="Stock tickers to monitor (appended to built-in list by default)")
+    parser.add_argument("--tickers", "-t", nargs="+", metavar="TICKER", dest="tickers_flag",
+                        help="Stock tickers (flag form)")
+    parser.add_argument("--crypto", "-c", nargs="+", metavar="TICKER", dest="crypto_flag",
+                        help="Crypto tickers to monitor (e.g. ETH SOL XRP)")
+    parser.add_argument("--only", "--no-default", action="store_true",
+                        help="Ignore the built-in ticker list")
+    parser.add_argument("--sleep", "-s", type=int, default=30, metavar="SECONDS",
+                        help="Refresh interval in seconds (default: 30)")
+    parser.add_argument("--ntfy", "-n", metavar="TOPIC",
+                        help="ntfy.sh topic for phone alerts every 30 min")
+    parser.add_argument("--whatsapp", "-w", metavar="NUMBER",
+                        help="WhatsApp number for alerts every 30 min (e.g. +16467651373)")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    for c in (args.crypto_flag or []):
+        CRYPTO_TICKERS.add(c.upper())
+
+    supplied_stocks = [t.upper() for t in (args.tickers + (args.tickers_flag or []))]
+    supplied_crypto = [t.upper() for t in (args.crypto_flag or [])]
+    supplied = supplied_stocks + supplied_crypto
+
+    if args.only:
+        tickers = supplied if supplied else TICKERS
+    else:
+        seen    = set(TICKERS)
+        tickers = TICKERS + [t for t in supplied if t not in seen]
+
+    print(colorize("Fetching targets from Nasdaq...", fg="fg_cyan", bold=True))
+    SYMBOLS = {}
+    with ThreadPoolExecutor(max_workers=len(tickers)) as pool:
+        futures = {pool.submit(fetch_targets, t): t for t in tickers}
+        for fut in as_completed(futures):
+            ticker = futures[fut]
+            t_low, t_high = fut.result()
+            SYMBOLS[ticker] = (t_low, t_high)
+            print(colorize(f"  {ticker}: low={t_low}  high={t_high}", fg="fg_yellow"))
+    SYMBOLS = {t: SYMBOLS[t] for t in tickers}
+
+    print()
+
+    ALERT_INTERVAL = 30 * 60
+    last_alert_ts  = 0.0
+
+    while True:
+        with ThreadPoolExecutor(max_workers=len(SYMBOLS)) as pool:
+            futures = {pool.submit(build_row, s, tl, th): s for s, (tl, th) in SYMBOLS.items()}
+            results = {}
+            for fut in as_completed(futures):
+                symbol = futures[fut]
+                row    = fut.result()
+                if row is None:
+                    print(json.dumps({"error": f"Could not fetch price for {symbol}"}))
+                    sys.exit(1)
+                results[symbol] = row
+        rows = [results[s] for s in SYMBOLS]
+
+        snapshot    = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print()
+        table_width = print_table(rows)
+        banner      = "=" * table_width
+        print(colorize(banner, fg="bg_dark"))
+        print(colorize(f"Snapshot: {snapshot}", fg="fg_white", bg="bg_dark", bold=True))
+        print(colorize(banner, fg="bg_dark") + "\n")
+
+        now_ts = time.time()
+        if (args.ntfy or args.whatsapp) and (now_ts - last_alert_ts) >= ALERT_INTERVAL:
+            if args.ntfy:
+                send_ntfy(args.ntfy, rows, snapshot)
+                print(colorize(f"[ntfy] Alert sent to topic '{args.ntfy}'", fg="fg_cyan"))
+            if args.whatsapp:
+                send_whatsapp(args.whatsapp, rows, snapshot)
+                print(colorize(f"[whatsapp] Alert sent to {args.whatsapp}", fg="fg_cyan"))
+            last_alert_ts = now_ts
+
+        time.sleep(args.sleep)
+
+
+if __name__ == "__main__":
+    main()

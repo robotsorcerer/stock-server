@@ -1,0 +1,13 @@
+{
+  "name": "stocks-serve",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Standalone WhatsApp notification service for the stock monitor",
+  "main": "whatsapp_service.mjs",
+  "scripts": {
+    "start": "node whatsapp_service.mjs"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc.9"
+  }
+}
