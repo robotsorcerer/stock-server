@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import TICKERS, CRYPTO_TICKERS
 from utils.colors import colorize
+from utils.history_logger import append_daily_history_log
 from api.nasdaq import fetch_targets
 from display.table import build_row, print_table
 from alerts.notify import send_ntfy, send_whatsapp
@@ -73,6 +74,10 @@ def main():
     else:
         seen    = set(TICKERS)
         tickers = TICKERS + [t for t in supplied if t not in seen]
+
+    # Persist daily 5-year trend/event snapshots unless already done upstream.
+    if os.environ.get("STOCK_SKIP_HISTORY_LOG") != "1":
+        append_daily_history_log(tickers)
 
     print(colorize("Fetching targets from Nasdaq...", fg="fg_cyan", bold=True))
     SYMBOLS = {}

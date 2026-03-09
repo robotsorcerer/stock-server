@@ -1,6 +1,6 @@
 TICKERS = [
-    "INBS", "LULU", "OKLO", "COIN", "CRCL",
-    "MSTR", "ARM", "AMD", "NVDA", "MSFT", "BTC",
+    "INBS", "LULU", "OKLO", "COIN", "CRCL", "GOOG",
+    "MSTR", "ARM", "AMD", "NVDA", "MSFT", "BTC", "AAPL"
 ]
 
 CRYPTO_TICKERS = {"BTC"}

@@ -97,21 +97,33 @@ if __name__ == "__main__":
         print(f"[stock-guard] Not launching — today is a {reason}.")
         sys.exit(0)
 
-    base = os.path.dirname(os.path.abspath(__file__))
+    base = os.path.expanduser("~/Documents/ML-Control-Rob/stocks_serve")
+    #base = os.path.dirname(os.path.abspath(__file__))
 
     # Start the WhatsApp notification service in the background (if present).
-    wa_service = os.path.join(base, "stocks_serve", "whatsapp_service.mjs")
+    wa_service = os.path.join(base, "whatsapp_service.mjs")
     if os.path.exists(wa_service):
-        import subprocess
         subprocess.Popen(
             ["node", wa_service],
-            stdout=open(os.path.join(base, "stocks_serve", "wa_service.log"), "a"),
+            stdout=open(os.path.join(base, "wa_service.log"), "a"),
             stderr=subprocess.STDOUT,
         )
         print("[stock-guard] WhatsApp service started.")
+
+    # Update daily history snapshots before launching the monitor.
+    stock_log = os.path.join(base, "stock-log")
+    if os.path.exists(stock_log):
+        log_cmd = [stock_log] + sys.argv[1:]
+        result = subprocess.run(log_cmd, check=False)
+        if result.returncode == 0:
+            print("[stock-guard] Daily history log updated.")
+        else:
+            print(f"[stock-guard] Warning: stock-log exited with {result.returncode}.")
 
     script = os.path.join(base, "stock")
     # Pass through any extra arguments (e.g. --crypto ETH --whatsapp +16467651373)
     cmd = [script] + sys.argv[1:]
     print(f"[stock-guard] Trading day — launching stock monitor.")
-    os.execv(script, cmd)
+    env = os.environ.copy()
+    env["STOCK_SKIP_HISTORY_LOG"] = "1"
+    os.execve(script, cmd, env)

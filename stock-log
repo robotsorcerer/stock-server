@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""
+stock-log — append one daily history snapshot per symbol.
+"""
+import argparse
+import os
+import sys
+
+# Ensure imports resolve relative to this script's directory.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from config import TICKERS, CRYPTO_TICKERS
+from utils.history_logger import append_daily_history_log
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Append one daily history snapshot per symbol.",
+    )
+    parser.add_argument("tickers", nargs="*", metavar="TICKER",
+                        help="Stock tickers to log (appended to built-in list by default)")
+    parser.add_argument("--tickers", "-t", nargs="+", metavar="TICKER", dest="tickers_flag",
+                        help="Stock tickers (flag form)")
+    parser.add_argument("--crypto", "-c", nargs="+", metavar="TICKER", dest="crypto_flag",
+                        help="Crypto tickers to log (e.g. ETH SOL XRP)")
+    parser.add_argument("--only", "--no-default", action="store_true",
+                        help="Ignore the built-in ticker list")
+    return parser.parse_args()
+
+
+def resolve_tickers(args):
+    for c in (args.crypto_flag or []):
+        CRYPTO_TICKERS.add(c.upper())
+
+    supplied_stocks = [t.upper() for t in (args.tickers + (args.tickers_flag or []))]
+    supplied_crypto = [t.upper() for t in (args.crypto_flag or [])]
+    supplied = supplied_stocks + supplied_crypto
+
+    if args.only:
+        return supplied if supplied else TICKERS
+
+    seen = set(TICKERS)
+    return TICKERS + [t for t in supplied if t not in seen]
+
+
+def main():
+    args = parse_args()
+    tickers = resolve_tickers(args)
+    append_daily_history_log(tickers)
+
+
+if __name__ == "__main__":
+    main()

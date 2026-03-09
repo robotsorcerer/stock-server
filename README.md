@@ -43,6 +43,7 @@ and optional push alerts to your phone via WhatsApp or ntfy.
 ```
 stocks_serve/
 ├── stock                   # Entry point — argparse + main polling loop
+├── stock-log               # Daily history snapshot logger (5y trends/events)
 ├── stock-guard             # Trading-day guard (runs stock on market days only)
 ├── config.py               # Default watchlist, crypto set, asset_class()
 ├── whatsapp_service.mjs    # Standalone Baileys HTTP service for WhatsApp delivery
@@ -214,8 +215,9 @@ X-GNOME-Autostart-enabled=true
 EOF
 ```
 
-`stock-guard` checks whether today is a trading day (weekday, not a NYSE holiday) before
-launching `stock`. On weekends and holidays it exits silently.
+`stock-guard` checks whether today is a trading day (weekday, not a NYSE holiday), runs
+`stock-log` once to refresh that day's history snapshots, then launches `stock`.
+On weekends and holidays it exits silently.
 
 NYSE holidays handled:
 
@@ -258,6 +260,9 @@ NYSE holidays handled:
 
 # Custom refresh interval (default: 30 seconds)
 ./stock --sleep 60
+
+# Append/update today's history snapshots only
+./stock-log
 ./stock -s 10
 
 # Phone alerts via WhatsApp every 30 minutes
@@ -361,7 +366,8 @@ Defined in `config.py`. Edit `TICKERS` to change the permanent list.
 | Module                | Responsibility                                                  |
 |-----------------------|-----------------------------------------------------------------|
 | `stock`               | CLI parsing, main polling loop, alert dispatch                  |
-| `stock-guard`         | NYSE trading-day check; starts WhatsApp service then execs stock|
+| `stock-guard`         | NYSE trading-day check; starts WhatsApp + `stock-log`, then execs stock |
+| `stock-log`           | Daily snapshot writer for 5-year trend/event history             |
 | `config.py`           | `TICKERS`, `CRYPTO_TICKERS`, `asset_class()`                    |
 | `utils/colors.py`     | `ANSI` palette, `colorize()`, `strip_ansi()`                    |
 | `utils/parsers.py`    | `parse_dollar()`, `parse_volume()`                              |
